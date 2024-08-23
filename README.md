@@ -11,53 +11,98 @@
 driver = webdriver.Chrome()  # أو أي متصفح آخر
 
 #### التنقل
-driver.get("https://www.example.com")  # فتح صفحة
-driver.back()  # الرجوع للصفحة السابقة
-driver.forward()  # الانتقال للصفحة التالية
-driver.refresh()  # تحديث الصفحة
+##### فتح صفحة
+driver.get("https://www.example.com")  
+##### الرجوع للصفحة السابقة
+driver.back()  
+##### الانتقال للصفحة التالية
+driver.forward()  
+##### تحديث الصفحة
+driver.refresh() 
+
+
 
 #### العثور على العناصر
 element = driver.find_element(By.ID, "element_id")
 elements = driver.find_elements(By.CLASS_NAME, "class_name")
-#### طرق أخرى: By.NAME, By.TAG_NAME, By.LINK_TEXT, By.PARTIAL_LINK_TEXT, By.XPATH, By.CSS_SELECTOR
+##### طرق أخرى: By.NAME, By.TAG_NAME, By.LINK_TEXT, By.PARTIAL_LINK_TEXT, By.XPATH, By.CSS_SELECTOR
 
 #### التفاعل مع العناصر
-element.click()  # النقر على عنصر
-element.send_keys("text")  # إدخال نص
-element.clear()  # مسح النص من حقل الإدخال
+##### النقر على العنصر
+element.click()
+##### ادخال نص
+element.send_keys("text")  
+##### مسح النص من الحقل
+element.clear()  
+##### ارسال نموذج
 element.submit()  # إرسال نموذج
 
 #### الحصول على معلومات
-element.text  # الحصول على النص الظاهر للعنصر
-element.get_attribute("attribute_name")  # الحصول على قيمة سمة معينة
-driver.title  # الحصول على عنوان الصفحة
-driver.current_url  # الحصول على URL الحالي
+#####  الحصول على النص الظاهر للعنصر
+element.text  
+#####  الحصول على قيمة سمة معينة
+element.get_attribute("attribute_name")  
+#####  الحصول على عنوان الصفحة
+driver.title  
+##### الحصول على URL الحالي
+driver.current_url  
 
 #### الانتظار
-wait = WebDriverWait(driver, 10)  # إنشاء كائن انتظار لمدة 10 ثوانٍ
-element = wait.until(EC.presence_of_element_located((By.ID, "element_id")))  # الانتظار حتى ظهور عنصر
+#####   إنشاء انتظار لمدة 10 ثوانٍ
+wait = WebDriverWait(driver, 10)  
+##### الانتظار حتى ظهور عنصر
+element = wait.until(EC.presence_of_element_located((By.ID, "element_id"))) 
+
+
+
+
 
 #### التعامل مع النوافذ والإطارات
-driver.switch_to.window(driver.window_handles[-1])  # التبديل إلى النافذة الأخيرة
-driver.switch_to.frame("frame_name")  # التبديل إلى إطار معين
-driver.switch_to.default_content()  # العودة إلى المحتوى الرئيسي
+
+##### التبديل إلى النافذة الأخيرة
+driver.switch_to.window(driver.window_handles[-1]) 
+
+#####   التبديل إلى إطار معين
+driver.switch_to.frame("frame_name") 
+##### العودة إلى المحتوى الرئيسي
+
+driver.switch_to.default_content()  
+
+
 
 # JavaScript
-driver.execute_script("return document.title;")  # تنفيذ JavaScript
+driver.execute_script("return document.title;")  #   سكربت ل JavaScript
 
 #### لقطات الشاشة
-driver.save_screenshot("screenshot.png")  # التقاط لقطة شاشة
+
+##### التقاط لقطة شاشة
+driver.save_screenshot("screenshot.png") 
+
 
 #### الكوكيز
-driver.add_cookie({"name": "cookie_name", "value": "cookie_value"})  # إضافة كوكي
-driver.get_cookies()  # الحصول على جميع الكوكيز
+#####  إضافة كوكي
+driver.add_cookie({"name": "cookie_name", "value": "cookie_value"})  
+
+##### الحصول على جميع الكوكيز
+driver.get_cookies() 
+
 
 #### التنقل في القوائم المنسدلة
+
 from selenium.webdriver.support.ui import Select
 select = Select(driver.find_element(By.ID, "dropdown_id"))
-select.select_by_visible_text("Option Text")  # اختيار بواسطة النص الظاهر
-select.select_by_value("value")  # اختيار بواسطة القيمة
-select.select_by_index(1)  # اختيار بواسطة الفهرس
+
+#####  اختيار بواسطة النص الظاهر
+
+select.select_by_visible_text("Option Text")  
+
+#####  اختيار بواسطة القيمة
+
+select.select_by_value("value") 
+
+##### اختيار بواسطة الفهرس
+
+select.select_by_index(1)  
 
 #### السحب والإفلات
 from selenium.webdriver.common.action_chains import ActionChains
@@ -66,6 +111,13 @@ target = driver.find_element(By.ID, "target")
 ActionChains(driver).drag_and_drop(source, target).perform()
 
 #### إغلاق المتصفح
-driver.close()  # إغلاق النافذة الحالية
-driver.quit()  # إغلاق جميع النوافذ وإنهاء عملية WebDriver
+
+
+######   إغلاق النافذة الحالية
+driver.close() 
+
+
+##### إغلاق جميع النوافذ وإنهاء عملية WebDriver
+
+driver.quit()  
 
