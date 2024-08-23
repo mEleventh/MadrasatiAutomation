@@ -1,1 +1,372 @@
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, StaleElementReferenceException
+import pyotp
+from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import Select
 
+
+
+
+
+# 1. تعريف الدوال الاساسية 
+
+
+#  بدأنا بدالةإنتظار العنصر وحددنا المعلمات بين الاقواس
+# ميل الاتمتة والذي هو في نصنا هذا السلينيوم 
+# لوكيتر لتحديد موقع العنصر في الصفحة
+# تايم اوت هي مدة الانتظار القصوى وهي بالثواني
+# و اخيراً اتمبتس لعدد المحاولات 
+
+def wait_for_element(driver, locator, timeout=15, attempts=3):
+    for _ in range(attempts):
+        try:
+            return WebDriverWait(driver, timeout).until(EC.presence_of_element_located(locator))
+        except (StaleElementReferenceException, TimeoutException):
+            print(f" جاري إعادة المحاولة... ({_ + 1}/{attempts})")  # اذا العنصر غير متاح اكتب 
+    raise TimeoutException(f"العنصر لم يظهر بعد {attempts} محاولات")
+
+def click_button(driver, button): # هذه الدالة للضغط على الزر بثلاث طرق
+    try:
+        button.click() # مباشرة
+    except: # اذا لم تنجح سيستخدم الجافاسكربت لتحريك المؤشر و التعامل مع انواع الازرار
+        try: 
+            driver.execute_script("arguments[0].click();", button)
+        except:
+            actions = ActionChains(driver)
+            actions.move_to_element(button).click().perform()
+
+
+
+# 2. دالة إعداد المتصفح
+# وهو في حالتنا هذه متصفح كروم وسيلينيوم
+
+
+
+def setup_driver():
+    chrome_options = Options() # انشاء خيارات لكروم
+    chrome_options.add_argument("--no-sandbox")  # الغاء وضع الحماية لتحسين العمل
+    chrome_options.add_argument("--disable-dev-shm-usage") # هذي تعطيل استخدام /dev/shm وهي مفيدة لأهل لينكس
+    chrome_options.add_argument("--disable-web-security") # تعطيل امان الويب طبعاً لابد ان تكون حذر
+    chrome_options.add_argument("--allow-running-insecure-content") # تشغيل المحتوى الغير آمن
+    chrome_options.add_argument("--disable-gpu") # تعطيل استخدام GPU
+    chrome_options.add_argument("--window-size=1920,1080") # حجم نافذة المتصفح    chrome_options.add_experimental_option('useAutomationExtension', False) # تعطيل استخدام ملحق الأتمتة
+    service = Service(ChromeDriverManager().install())  # تنزيل وتثبيت الإصدار المناسب من ChromeDriver تلقائيًا.
+    return webdriver.Chrome(service=service, options=chrome_options)
+
+
+
+# 3. تسجيل الدخول إلى منصة مدرستي
+# الدالة هذي سهلة وواضحة لكن يبي لها سبورة:)
+
+
+
+def login_to_madrasati(driver):
+    print("محاولة تسجيل الدخول إلى منصة مدرستي...")
+    driver.get("https://schools.madrasati.sa/Auth/SignIn")
+    time.sleep(2)
+
+    email_field = wait_for_element(driver, (By.ID, "i0116"))
+    email_field.clear()
+    email_field.send_keys("t323867@qsmb.moe.gov.sa")
+    time.sleep(2)
+
+    next_button = wait_for_element(driver, (By.ID, "idSIButton9"))
+    next_button.click()
+    time.sleep(2)
+
+    password_field = wait_for_element(driver, (By.ID, "i0118"))
+    password_field.clear()
+    password_field.send_keys("**********")
+    time.sleep(2)
+
+    sign_in_button = wait_for_element(driver, (By.ID, "idSIButton9"))
+    sign_in_button.click()
+    time.sleep(2)
+
+    totp = pyotp.TOTP('***********')
+    code = totp.now()
+    code_field = wait_for_element(driver, (By.XPATH, "//input[@name='otc']"))
+    code_field.clear()
+    code_field.send_keys(code)
+    time.sleep(2)
+
+    verify_button = wait_for_element(driver, (By.XPATH, "//input[@type='submit']"))
+    verify_button.click()
+    time.sleep(2)
+    
+    yes_button = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
+    yes_button.click()
+    time.sleep(2)
+
+    try:
+        WebDriverWait(driver, 15).until(EC.url_contains("madrasati.sa/Dashboards/Schools"))
+        print("تم تسجيل الدخول والانتقال إلى الصفحة الرئيسية بنجاح")
+    except TimeoutException:
+        print("فشل الانتقال إلى الصفحة الرئيسية")
+        raise
+
+
+
+# 4.هذه الدالة للتحقق من الصفحة الحالية
+
+
+
+def check_current_page(driver):
+    current_url = driver.current_url
+    page_title = driver.title
+    print(f"الصفحة الحالية: {current_url}")
+    print(f"عنوانها: {page_title}")
+    
+    try:
+        school_name = driver.find_element(By.XPATH, "//h4[contains(text(), 'متوسطة')]").text
+        print(f"اسم المدرسة: {school_name}")
+    except NoSuchElementException:
+        print("لم يتم العثور على اسم المدرسة")
+
+    try:
+        menu_items = driver.find_elements(By.CSS_SELECTOR, ".sidebar-menu li")
+        print("عناصر القائمة الجانبية:")
+        for item in menu_items:
+            print(item.text)
+    except NoSuchElementException:
+        print("لم يتم العثور على عناصر القائمة الجانبية")
+
+
+
+# 5. هذه الدالة للانتقال إلى الصفحات المطلوبة
+# والباقي مافيه جديد تختار الدالة المطلوبة والمطلوب منها وهلم جرا
+# جرب اتمتة جميع انواع انواع الازرار  والطلبات
+# ابحر في عالم اتمتمتة المتصفحات كتابة ومسح و نقر و تسجيل وتصوير الخ
+# حدود هذه التقنية هي خيالك
+
+
+def navigate_to_homepage(driver):
+    print("محاولة الانتقال إلى صفحة المدرسة...")
+    driver.get("https://schools.madrasati.sa/SchoolManagment/Actions/Teacher/9A2BF1D94678A11E1B807A46B3C16B05")
+    time.sleep(2)
+
+
+
+def navigate_to_Schedule(driver):
+    print("محاولة الانتقال إلى الجدول ...")
+    driver.get("https://schools.madrasati.sa/SchoolSchedule/Schedule/TeacherSchedule?SchoolId=9A2BF1D94678A11E1B807A46B3C16B05")
+    time.sleep(2)
+    
+
+
+def navigate_to_Sunday1st(driver):
+    print("محاولة الانتقال إلى الاحد الدرس الاول ...")
+    driver.get("https://schools.madrasati.sa/SchoolSchedule/Schedule/ManageLecture?SchoolId=9A2BF1D94678A11E1B807A46B3C16B05&lectureId=1&dateTicks=638601408000000000&subjectId=3750&classroomId=40873")
+    time.sleep(2)
+
+def click_view_lesson_details(driver):
+    try:
+        # انتظار ظهور الزر
+        button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//a[contains(@class, 'btn-primary') and contains(., 'مشاهدة تفاصيل الدرس')]"))
+        )
+        
+        # محاولة النقر على الزر
+        click_button(driver, button)
+        
+        print("تم النقر على زر 'مشاهدة تفاصيل الدرس' بنجاح")
+    except Exception as e:
+        print(f"حدث خطأ أثناء محاولة النقر على زر 'مشاهدة تفاصيل الدرس': {str(e)}")
+
+def navigate_to_activity(driver):
+    print("محاولة الانتقال إلى النشاط...")
+    driver.get("https://schools.madrasati.sa/Projects/Projects/ViewProject/B35062362A9B6B0DC51977F9B8D84846")
+    time.sleep(2)      
+
+
+def navigate_to_annouce(driver):
+    print("محاولة الانتقال إلى الاعلانات...")
+    driver.get("https://schools.madrasati.sa/Ads/ManageAds/indexSchool?schoolId=9A2BF1D94678A11E1B807A46B3C16B05&roleId=D7359FF3DE0993A4A40BED1FB2ED3292")
+    time.sleep(2)
+
+
+def navigate_to_new_announce(driver):
+    print("محاولة الانتقال إلى اعلان جديد...")
+    driver.get("https://schools.madrasati.sa/Ads/ManageAds/Create?schoolId=9A2BF1D94678A11E1B807A46B3C16B05&roleId=D7359FF3DE0993A4A40BED1FB2ED3292&classroomId=001AE68CF98165F40BD4A82401FC0699")
+    time.sleep(2)
+
+
+
+
+# 6. دوال مساعدة للتفاعل مع عناصر الصفحة
+
+
+
+
+def wait_and_click(driver, locator, timeout=15):
+    element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(locator))
+    element.click()
+    time.sleep(2)
+    
+    # للكتابة
+    
+    
+def wait_and_send_keys(driver, locator, keys, timeout=15):
+    element = WebDriverWait(driver, timeout).until(EC.presence_of_element_located(locator))
+    element.clear()
+    element.send_keys(keys)
+    time.sleep(2)
+
+
+    #  لفتح التقويم واختيار التاريخ
+
+def select_date_from_calendar(driver, date_input_id, target_date):
+    print(f"محاولة اختيار التاريخ {target_date} من التقويم...")
+    
+
+    date_input = wait_for_element(driver, (By.ID, date_input_id))
+    date_input.click()
+    
+    calendar = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "calendars-popup"))
+    )
+    
+    year, month, day = map(int, target_date.split('/'))
+    
+    year_select = Select(calendar.find_element(By.CSS_SELECTOR, "select.calendars-month-year:nth-child(2)"))
+    year_select.select_by_value(f"{month}/{year}")
+    
+    month_select = Select(calendar.find_element(By.CSS_SELECTOR, "select.calendars-month-year:first-child"))
+    month_select.select_by_value(f"{month}/{year}")
+    
+    day_element = WebDriverWait(calendar, 10).until(
+        EC.element_to_be_clickable((By.XPATH, f"//a[text()='{day}']"))
+    )
+    day_element.click()
+    
+    print(f"تم اختيار التاريخ {target_date} بنجاح.")
+
+
+
+
+# 7. دالة إنشاء إعلان جديد
+
+
+def create_announcement(driver):
+    print("بدء عملية إنشاء إعلان جديد...")
+ 
+    print("إدخال عنوان الإعلان...")
+    wait_and_send_keys(driver, (By.ID, "Title"), "الاسبوع الثاني") 
+    
+    print("إدخال وصف الإعلان...")
+    wait_and_send_keys(driver, (By.ID, "Description"), "الخطة الاسبوعية")
+    
+    print("اختيار تاريخ بداية النشر...")
+    select_date_from_calendar(driver, "PublishStartDate", "1446/02/20")
+    
+    print("اختيار تاريخ نهاية النشر...")
+    select_date_from_calendar(driver, "PublishEndDate", "1446/02/29")
+    
+    print("محاولة النقر على زر إضافة الرابط...")
+    add_link_locator = (By.XPATH, "//a[@class='btn btn-default btn-xs' and @data-original-title='إرفاق رابط']")
+    wait_and_click(driver, add_link_locator)
+    
+
+    
+    
+    print("انتظار ظهور النافذة المنبثقة لإضافة الرابط...")
+    WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "Name")))
+    
+    
+    print("إدخال اسم الرابط...")
+    wait_and_send_keys(driver, (By.ID, "Name"), "رابط الاسبوع الثاني")
+    
+    
+    print("إدخال عنوان URL للرابط...")
+    wait_and_send_keys(driver, (By.ID, "Link"), "https://iencontent.ien.edu.sa/Storage/PdfFiles/13052024083012615.pdf")
+
+
+    print("النقر على زر حفظ الرابط...")
+    save_button_locator = (By.ID, "SaveUrl")
+    wait_and_click(driver, save_button_locator)
+    
+    
+    # انتظار اختفاء النافذة المنبثقة
+  
+    
+    print("انتظار اختفاء النافذة المنبثقة...")
+    WebDriverWait(driver, 10).until(EC.invisibility_of_element_located((By.ID, "SaveUrl")))
+
+  
+
+    
+    # النقر على زر الحفظ الرئيسي
+
+
+  
+  
+    print("النقر على زر الحفظ الرئيسي...")
+    main_save_button_locator = (By.XPATH, "//button[@type='submit' and @name='Create']")
+    wait_and_click(driver, main_save_button_locator)
+
+    print("تم إنشاء الإعلان بنجاح")
+
+
+
+
+# 9. دالة لإعادة المحاولة عند فشل العملية
+
+
+
+
+def retry_on_failure(func, max_attempts=3):
+    for attempt in range(max_attempts):
+        try:
+            func()
+            return
+        except Exception as e:
+            print(f"فشلت المحاولة {attempt + 1}: {str(e)}")
+            if attempt == max_attempts - 1:
+                raise
+
+
+
+           
+# 10. الدالة الرئيسية لتنفيذ جميع العمليات التي قمنا باعدادها في الاعلى
+
+
+
+
+def main():
+    driver = None
+    try:
+        driver = setup_driver()
+        print("تم إعداد المتصفح بنجاح")
+        login_to_madrasati(driver)
+        time.sleep(5)
+        check_current_page(driver)
+        navigate_to_homepage(driver)
+        navigate_to_Schedule(driver)
+        navigate_to_Sunday1st(driver)
+        click_view_lesson_details(driver)
+        navigate_to_activity(driver)
+        navigate_to_homepage(driver)
+        navigate_to_annouce(driver)
+        navigate_to_new_announce(driver)
+        retry_on_failure(lambda: create_announcement(driver))
+    except Exception as e:
+        print(f"حدث خطأ: {str(e)}")
+        if driver:
+            print(f"عنوان URL الحالي: {driver.current_url}")
+            print(f"عنوان الصفحة الحالية: {driver.title}")
+            print("محتوى الصفحة:")
+            print(driver.page_source[:500])
+    finally:
+        if driver:
+            print("إغلاق المتصفح...")
+            driver.quit()
+
+if __name__ == "__main__":
+    main()
